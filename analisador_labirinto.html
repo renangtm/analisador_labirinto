@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+	<meta charset="utf-8">
+
+	<title>Analisador de labirintos</title>
+
+	<style type="text/css">
+
+		body{
+			font-family: Arial;
+			font-size: 12px;
+			background-image: url('quadrado.png');
+			background-repeat: repeat;
+		}
+
+		input[type="text"]{
+
+			width: 30px;
+			text-align: center;
+			border:1px dashed;
+			padding:10px;
+			transition-property: all;
+			transition-duration: 0.2s;
+
+		}
+
+		input[type="text"]:focus{
+
+			width: 50px;
+			text-align: center;
+			border:1px solid;
+			padding:10px;
+			color:SteelBlue;
+			font-weight: bold;
+			transition-property: all;
+			transition-duration: 0.2s;
+		}
+
+		button{
+
+			cursor:pointer;
+			width: 300px;
+			text-align: center;
+			border:2px solid;
+			padding:10px;
+			background-color:#FFFFFF;
+			font-weight: bold;
+			color:#888888;
+
+		}
+
+		button:hover{
+
+			cursor:pointer;
+			width: 300px;
+			text-align: center;
+			border:2px solid;
+			padding:10px;
+			background-color:#FFFFFF;
+			font-weight: bold;
+			color:SteelBlue;
+		}
+
+
+		input[type="file"]{
+
+			cursor:pointer;
+			width: 300px;
+			text-align: center;
+			border:2px solid;
+			padding:10px;
+			color:DarkBlue;
+		}
+
+		input[type="file"]:focus{
+
+			cursor:pointer;
+			width: 300px;
+			text-align: center;
+			border:2px solid;
+			padding:10px;
+			color:SteelBlue;
+			font-weight: bold;
+		}
+
+	</style>
+
+</head>
+
+<body>
+
+<strong>ANALISADOR DE LABIRINTOS</strong> &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp Desenvolvido por <b>Renan Gonçalves T.M</b> - renan_goncalves@outlook.com.br
+
+<hr>
+<div style="border:1px solid;padding:10px;background-color: #FFFFFF">
+	<input type="file" id="fl">
+	&nbsp
+	&nbsp
+	Precisão (menor melhor):
+	<input type="text" value="2" id="txtP">
+	&nbsp
+	&nbsp
+	Detecção de variação de cor:
+	<input type="text" value="130" id="txtV">
+	&nbsp
+	&nbsp
+	Tamanho do objeto:
+	<input type="text" value="5" id="txtT">
+	&nbsp
+	&nbsp
+	<br>
+	<button onclick="carregar()">CARREGAR IMAGEM</button>
+	<hr style="border:1px dashed">
+	<button onclick="carregamentoParcial()">CARREGAR PARCIALMENTE</button>
+	&nbsp
+	&nbsp
+	Nível de geração de curva:
+	<input type="text" value="5" id="txtC">
+</div>
+<div style="background-color:#FFFFFF;width:300px;height:23px;border:2px solid;color:DarkRed;font-weight: bold;padding:10px;margin-top:5px;" id="status">
+	Selecione a imagem do labirinto.
+</div>
+
+
+<div style="margin:30px;position:relative;width:calc(100%-60px)" id="container">
+	
+</div>
+
+
+
+
+
+<script type="text/javascript">
+
+var objetosSelecao = [];
+var posSelecao = null;
+
+var objetos = [];
+
+var geracaoCurva = 5;
+
+var ina = false;
+
+var tamanho = 6;
+
+var anti_precisao = 1;
+
+var variacaoMaxima = 110;
+
+var robo = null;
+
+var reload1 = function(){
+
+}
+
+var reload2 = function(){
+
+}
+
+function carregar(){
+
+	if(ina)return;
+
+	for (var i = 0; i < objetosSelecao.length; i++) {
+		objetosSelecao[i].style.display="none";
+	}
+
+	for (var i = 0; i < objetos.length; i++) {
+		objetos[i].style.display="none";
+	}
+
+	objetosSelecao = [];
+	posSelecao = null;
+	objetos = [];
+
+	anti_precisao = parseInt(txtP.value);
+
+	tamanho = parseInt(txtT.value);
+
+	variacaoMaxima = parseInt(txtV.value);
+
+	geracaoCurva  = parseInt(txtC.value);
+
+	reload1();
+
+	reload2();
+
+	reload1 = function(){
+
+	}
+
+	reload2 = function(){
+
+
+	}
+
+	selecionarImagem();
+
+}
+
+function carregamentoParcial(){
+
+	if(ina)return;
+
+	geracaoCurva  = parseInt(txtC.value);
+	for (var i = 0; i < objetos.length; i++) {
+		objetos[i].style.display="none";
+	}
+	objetos = [];
+	posSelecao();
+}
+
+
+function log(log){
+
+	setTimeout(function(){
+
+		document.getElementById('status').innerHTML = log;
+		
+	},200);
+
+}
+
+document.getScroll= function(){
+
+	if(window.pageYOffset!= undefined){
+
+ 		return [pageXOffset, pageYOffset];
+
+	}else{
+
+		var sx, sy, d= document, r= d.documentElement, b= d.body;
+
+		sx= r.scrollLeft || b.scrollLeft || 0;
+
+		sy= r.scrollTop || b.scrollTop || 0;
+
+		return [sx, sy];
+
+ 	}
+
+}
+
+function selecionarImagem(){
+
+	if (fl.files && fl.files[0]) {
+
+    	var reader = new FileReader();
+
+   		reader.onload = function (e) {
+
+   			var imagem = new Image();	
+
+   			imagem.onload = function(){
+
+	   			var canvas = document.createElement('canvas');
+
+				canvas.width = imagem.width;
+
+				canvas.height = imagem.height;
+
+				var context = canvas.getContext('2d');
+
+				context.drawImage(imagem, 0, 0);
+				
+				var mapa = context.getImageData(0, 0, imagem.width, imagem.height).data;
+
+				var mapa_rgb = [];				
+
+				for (var i = 0; i < mapa.length; i+=4) {
+
+					var h = Math.floor(Math.floor(i/4)/imagem.width); 
+				
+					if(h==mapa_rgb.length){
+
+						mapa_rgb[h] = [];
+
+					}
+					var rgb = [mapa[i],mapa[i+1],mapa[i+2]];
+
+					mapa_rgb[h][Math.floor(i/4)-(h*imagem.width)] = rgb;
+
+				}
+
+				log("Relizando o reconhecimento do labirinto");
+
+	
+				reload1 = function(){
+					mapa.length = 0;
+					mapa_rgb.length = 0;
+				}
+
+				gerarLabirinto(imagem,mapa_rgb,anti_precisao,tamanho);
+
+		
+
+			}
+
+			imagem.src = e.target.result;
+
+			objetosSelecao[objetosSelecao.length] = imagem;
+
+			log("Gerando mapa de pixels da imagem");
+
+    	};
+
+    	log("Fazendo leitura da imagem...");
+
+    	reader.readAsDataURL(fl.files[0]);
+
+  	}
+
+}
+
+function variou(cor1,cor2){
+
+	var brilho1 = ( 299 * cor1[0] + 587 * cor1[1] + 114 * cor1[2]) /1000;
+	var brilho2 = ( 299 * cor2[0] + 587 * cor2[1] + 114 * cor2[2]) /1000;
+
+	var dif = Math.abs(brilho1-brilho2)+Math.abs(cor1[0]-cor2[0])+Math.abs(cor1[1]-cor2[1])+Math.abs(cor1[2]-cor2[2]);
+
+
+	return dif>variacaoMaxima;
+
+}
+
+function gerarLabirinto(imagem,mapa,anti_precisao,tamanho_objeto){
+
+	var labirinto = [];
+
+	var conexoes = [];
+
+	var linha_anteiror = null;
+
+	var k = 0;
+
+	for(var y=0,yy=0;y<imagem.height;y+=anti_precisao,yy++){
+
+		var ponto_anterior = null;
+
+		var linha = [];
+
+		for (var x=0,xx=0;x<imagem.width;x+=anti_precisao,xx++) {
+			
+			var z = mapa[y][x];
+
+			var p = true;
+
+			lbl:
+			for(var yi=y;yi<imagem.height && yi<y+tamanho_objeto;yi++){
+
+				for(var xi=x;xi<imagem.width && xi<x+tamanho_objeto;xi++){
+
+					if(variou(z,mapa[yi][xi])){
+
+						p=false;
+
+						break lbl;
+
+					}
+
+				}
+
+			}
+
+			if(!p){
+
+				linha[xx] = null;
+
+				ponto_anterior = null;
+
+				continue;
+
+			}
+
+			linha[xx] = [y,x,z,k,yy,xx];
+
+			conexoes[k] = [];
+
+			k++;
+
+			if(ponto_anterior != null){
+				
+				if(!variou(linha[xx][2],ponto_anterior[2])){
+
+					var v = true;
+
+					for(var xt=ponto_anterior[1];xt<linha[xx][1];xt++){
+
+						if(variou(ponto_anterior[2],mapa[y][xt])){
+
+							v=false;
+
+							break;
+						}
+
+					}
+
+					if(v){
+
+						conexoes[ponto_anterior[3]][conexoes[ponto_anterior[3]].length]=[yy,xx];
+
+						conexoes[k-1][conexoes[k-1].length] = [ponto_anterior[4],ponto_anterior[5]]; 
+
+					}
+
+				}
+
+			}
+
+			if(linha_anteiror != null){
+
+				if(linha_anteiror[xx] != null){
+
+					if(!variou(linha[xx][2],linha_anteiror[xx][2])){
+
+						var v = true;
+
+						for(var yt=linha_anteiror[xx][0];yt<linha[xx][0];yt++){
+
+							if(variou(linha_anteiror[xx][2],mapa[yt][x])){
+
+								v=false;
+
+								break;
+
+							}
+
+						}
+
+						if(v){
+
+							conexoes[linha_anteiror[xx][3]][conexoes[linha_anteiror[xx][3]].length] = [yy,xx];
+
+							conexoes[k-1][conexoes[k-1].length] = [linha_anteiror[xx][4],linha_anteiror[xx][5]]; 
+
+						}
+
+					}
+
+				}
+
+			}
+
+			ponto_anterior = linha[xx];
+		}
+
+		labirinto[labirinto.length] = linha;
+
+		linha_anteiror = linha;
+
+	}
+
+	reload2 = function(){
+
+		labirinto.length = 0;
+
+		conexoes.length = 0;
+
+	}
+
+	posSelecao = function(){
+
+		var labirinto_fantasma = [];
+
+		for(var y=0,yy=0;y<imagem.height;y+=anti_precisao,yy++){
+
+			labirinto_fantasma[yy]=[];
+
+			for (var x=0,xx=0;x<imagem.width;x+=anti_precisao,xx++) {
+
+				labirinto_fantasma[yy][xx] = null;
+
+			}
+
+		}
+
+		selecaoDePontos(labirinto,conexoes,labirinto_fantasma,imagem,mapa);
+
+	}
+
+	posSelecao();
+
+}
+
+function selecaoDePontos(labirinto,conexoes,fant,imagem,mapa){
+
+	log("Aguardando a seleção dos pontos");
+
+	imagem.style.position = "absolute";
+
+	if(imagem.width<container.offsetWidth){
+
+		imagem.style.left = ((container.offsetWidth-imagem.width)/2)+"px";
+
+	}else{
+
+		imagem.style.left = "30px";
+
+	}
+
+	imagem.style.top = "20px";
+
+	imagem.style.cursor = "pointer";
+
+	container.appendChild(imagem);
+
+	var oft = 0;
+
+	var ofl = 0;
+
+	var p = imagem;
+
+	var i = 0;
+
+	var selecionados = [];
+
+	var block = false;
+
+	while(p!=null){
+
+		oft+=p.offsetTop
+
+		ofl+=p.offsetLeft;
+
+		p=p.parentElement;
+
+	}
+
+	imagem.onclick = function(e){
+
+		if(block)return;
+
+		var x = (e.clientX+document.getScroll()[0])-ofl;
+
+		var y = (e.clientY+document.getScroll()[1])-oft;
+
+		if(x+tamanho>imagem.width || y+tamanho>imagem.height)return;
+
+		selecionados[i] = [y,x];
+
+		i++;
+
+		var div = document.createElement('DIV');
+
+		div.style.width=tamanho+"px";
+
+		div.style.height=tamanho+"px";
+
+		div.style.position="absolute";
+
+		div.style.backgroundColor=((i-1==0)?"Blue":"Red");
+
+		div.style.borderRadius="20px";
+
+		div.style.left = (e.clientX+document.getScroll()[0]) + "px";
+
+		div.style.top = (e.clientY+document.getScroll()[1]) + "px";
+
+		objetos[objetos.length]= div;
+
+		document.body.appendChild(div);
+
+		if(i==2){
+
+			block = true;
+
+			log("Calculando rota...");
+
+			calcularRota(labirinto,conexoes,fant,selecionados[0],selecionados[1],imagem,mapa);
+
+		}else{
+
+			robo = div;
+
+		}
+
+	}
+
+}
+
+function calcularRota(labirinto,conexoes,fant,ponto1,ponto2,imagem,mapa){
+
+	var p1 = null;
+	var d1 = 0;
+
+	var p2 = null;
+	var d2 = 0;
+
+	for(var i=0;i<labirinto.length;i++){
+
+		for(var j=0;j<labirinto[i].length;j++){
+
+			if(labirinto[i][j]==null)continue;
+
+			var dd1 = Math.sqrt(((labirinto[i][j][0]-ponto1[0])*(labirinto[i][j][0]-ponto1[0]))+((labirinto[i][j][1]-ponto1[1])*(labirinto[i][j][1]-ponto1[1])));
+
+			var dd2 = Math.sqrt(((labirinto[i][j][0]-ponto2[0])*(labirinto[i][j][0]-ponto2[0]))+((labirinto[i][j][1]-ponto2[1])*(labirinto[i][j][1]-ponto2[1])));
+
+			if(p1==null || dd1<d1){
+
+				p1=labirinto[i][j];
+
+				d1=dd1;
+
+			}
+
+			if(p2==null || dd2<d2){
+
+				p2=labirinto[i][j];
+
+				d2=dd2;
+
+			}
+
+		}
+
+	}
+
+	var resultado = null;
+
+	var pilha = [p1];
+
+	for (var i = 0; i < pilha.length; i++) {
+		
+		if(p2[4]==pilha[i][4] && p2[5]==pilha[i][5]){
+
+			resultado = [];
+
+			var k = [p2[4],p2[5]];
+
+			while(true){
+
+				resultado[resultado.length] = labirinto[k[0]][k[1]];
+
+				if(k[0]==p1[4] && k[1]==p1[5]){
+
+					break;
+
+				}
+
+				k=fant[k[0]][k[1]];
+
+			}
+
+			break;
+		}
+
+		var c = conexoes[pilha[i][3]];
+
+		for (var j = 0; j < c.length; j++) {
+		
+			if(fant[c[j][0]][c[j][1]]!=null)continue;
+
+			pilha[pilha.length] = labirinto[c[j][0]][c[j][1]];
+
+			fant[c[j][0]][c[j][1]] = [pilha[i][4],pilha[i][5]];
+
+		}
+
+	}
+
+	if(resultado==null){
+
+		log("Não é possível fazer os 2 pontos se encontrarem.");
+	
+
+	}else{
+
+		var retas = [];
+
+		var ptI = null;
+
+		var ptT = null;
+
+		var m = false;
+
+		for (var i = resultado.length - 1; i >= 0; i--) {
+
+			if(ptI==null){
+
+				ptI = resultado[i];
+
+			}else if(ptT == null){
+
+				ptT = resultado[i];
+
+				m = ptT[0]!=ptI[0];
+
+			}else{
+
+				var mx = resultado[i][0] != ptT[0];
+
+				if(mx==m){
+
+					ptT = resultado[i];
+
+				}else{
+
+					retas[retas.length] = [[ptI[0],ptI[1]],[ptT[0],ptT[1]]];
+
+					ptI = null;
+
+					ptT = null;
+
+					i+=2;
+
+				}
+
+			}
+
+		}
+
+		if(ptT != null){
+
+			retas[retas.length] = [[ptI[0],ptI[1]],[ptT[0],ptT[1]]];
+
+		}
+
+		retas = otimizarRetas(retas,mapa);
+
+		exibirRetas(retas,imagem);
+
+	}
+
+}
+
+function retaPossivel(reta,mapa){
+
+	reta = [[Math.round(reta[0][0]),Math.round(reta[0][1])],[Math.round(reta[1][0]),Math.round(reta[1][1])]];
+
+
+	if(reta[0][1]==reta[1][1]){
+
+		var x = reta[0][1];
+
+		var ac = null;
+
+		for(var y = Math.min(reta[0][0],reta[1][0]);y<Math.max(reta[0][0],reta[0][0]);y++){
+
+			var c = mapa[y][x];
+
+			if(ac!=null){
+
+				if(variou(c,ac)){
+
+					return false;
+
+				}
+
+			}
+
+			for (var i = y; i<y+tamanho; i++) {
+
+				for (var j = x; j < x+tamanho; j++) {
+
+					if(variou(mapa[i][j],c)){
+
+						return false;
+
+					}
+
+				}
+
+			}
+
+			ac = c;
+
+		}
+
+	}else if(reta[0][0]==reta[1][0]){
+
+		var y = reta[0][0];
+
+		var ac = null;
+
+		for(var x = Math.min(reta[0][1],reta[1][1]);x<Math.max(reta[0][1],reta[0][1]);x++){
+
+			var c = mapa[y][x];
+
+			if(ac!=null){
+
+				if(variou(c,ac)){
+
+					return false;
+
+				}
+
+			}
+
+			for (var i = y; i<y+tamanho; i++) {
+
+				for (var j = x; j < x+tamanho; j++) {
+
+					if(variou(mapa[i][j],c)){
+
+						return false;
+
+					}
+
+				}
+				
+			}
+
+			ac = c;
+
+		}
+
+	}else{
+
+		var my = Math.abs(reta[1][0]-reta[0][0])/Math.abs(reta[1][1]-reta[0][1]);
+
+
+		if(reta[1][0]>reta[0][0]){
+
+			my *=-1;
+
+		}
+
+		var mx = (reta[1][1]>reta[0][1])?-1:1;
+
+
+		var x = reta[1][1];
+		var y = reta[1][0];
+
+		var xa = reta[0][1];
+
+
+		var rp = [];
+
+		ya = null;
+
+		for(;x!=xa;x+=mx,y+=my){
+
+			var fy = parseInt(Math.round(y));
+
+			if(ya != null){
+
+				for(var d=ya;d!=fy;d+=((ya>fy)?-1:1)){
+
+					rp[rp.length] = [d,x];
+
+				}
+
+			}
+
+			rp[rp.length] = [fy,x];
+
+			ya = fy;
+
+		}
+
+		rp[rp.length] = [parseInt(Math.round(y)),xa];
+
+		for(var p=0;p<rp.length;p++){
+
+			if(p>0){
+
+				if(variou(mapa[rp[p][0]][rp[p][1]],mapa[rp[p-1][0]][rp[p-1][1]])){
+
+					return false;
+
+				}
+
+			}
+
+			var c = mapa[rp[p][0]][rp[p][1]];
+
+			for(var y=rp[p][0];y<rp[p][0]+tamanho;y++){
+
+				for(var x=rp[p][1];x<rp[p][1]+tamanho;x++){
+
+					if(variou(c,mapa[y][x])){
+
+						return false;
+
+					}
+				
+				}
+
+			}
+
+		}
+
+	}
+
+	return true;
+
+}
+
+function otimizarRetas(retas,mapa){
+
+	var otimizou = true;
+
+	var otm = retas;
+		
+		while(otimizou){
+			var nr = [];
+			otimizou = false;
+		for (var i = 0; i < otm.length; i++) {
+
+				if(i==otm.length-1){
+					nr[nr.length]  = otm[i];
+					continue;
+				}
+
+			var p = [otm[i][0],otm[i+1][1]];
+
+			var rp = retaPossivel(p,mapa);
+						
+			if(rp){
+
+				otimizou = true;
+
+				nr[nr.length] = p;
+
+				i++;
+
+			}else{
+
+				nr[nr.length]  = otm[i];
+
+			}
+			
+		}
+
+		otm = nr;
+
+	}
+
+
+
+	for(var i=2;i<geracaoCurva;i++){
+
+		var nr = [otm[0]];
+
+		for(var j=1;j<otm.length;j++){
+
+			var ptm1 = [nr[nr.length-1][0][0]+(((nr[nr.length-1][1][0]-nr[nr.length-1][0][0])/i)*(i-1)),nr[nr.length-1][0][1]+(((nr[nr.length-1][1][1]-nr[nr.length-1][0][1])/i)*(i-1))];
+
+			var ptm2 = [otm[j][0][0]+(((otm[j][1][0]-otm[j][0][0])/i)),otm[j][0][1]+(((otm[j][1][1]-otm[j][0][1])/i))];
+			
+			var r = [ptm1,ptm2];
+
+			if(retaPossivel(r,mapa)){
+
+				nr[nr.length-1] = [nr[nr.length-1][0],ptm1];
+				nr[nr.length] = r;
+				nr[nr.length] = [ptm2,otm[j][1]];
+
+			}else{
+
+				nr[nr.length] = otm[j];
+
+			}
+
+		}
+
+
+		otm = nr;
+
+		nr = [otm[0]];
+
+		for(var j=1;j<otm.length;j++){
+
+			var ptm1 = [nr[nr.length-1][0][0]+(((nr[nr.length-1][1][0]-nr[nr.length-1][0][0])/i)*(i-1)),nr[nr.length-1][0][1]+(((nr[nr.length-1][1][1]-nr[nr.length-1][0][1])/i)*(i-1))];
+
+			var ptm2 = [otm[j][0][0]+(((otm[j][1][0]-otm[j][0][0])/i)),otm[j][0][1]+(((otm[j][1][1]-otm[j][0][1])/i))];
+
+			
+			var r = [ptm1,ptm2];
+
+			if(retaPossivel(r,mapa)){
+
+				nr[nr.length-1] = [nr[nr.length-1][0],ptm1];
+				nr[nr.length] = r;
+				nr[nr.length] = [ptm2,otm[j][1]];
+
+			}else{
+
+				nr[nr.length] = otm[j];
+
+			}
+
+		}
+
+
+		otm = nr;
+
+	}
+	
+	return otm;
+
+}
+
+function exibirRetas(retas,imagem){
+
+	var oft = 0;
+
+	var ofl = 0;
+
+	var p = imagem;
+
+	while(p!=null){
+
+		oft+=p.offsetTop
+
+		ofl+=p.offsetLeft;
+
+		p=p.parentElement;
+
+	}
+
+
+	log("Exibindo rota...");
+
+	robo.style.left = (ofl+retas[0][0][1])+"px";
+	robo.style.top = (oft+retas[0][0][0])+"px";
+
+	var pontosNormais = [];
+
+
+	for (var i = 0; i < retas.length; i++) {
+
+		var dx = (retas[i][1][1]-retas[i][0][1]);
+		var dy = (retas[i][1][0]-retas[i][0][0]);
+
+		var dist = Math.sqrt(dx*dx+dy*dy);
+
+		pontosNormais[pontosNormais.length] = [(dy)/dist,(dx)/dist,dist,0];
+	
+	}
+	ina = true;
+	animar(pontosNormais,(oft+retas[0][0][0]),(ofl+retas[0][0][1]),0);
+
+}
+
+
+function animar(pontos,oft,ofl,i){
+
+	var ls = 1;
+
+	var renan = 0.0;
+
+
+	while(renan<ls){
+
+
+	if(i==pontos.length){
+
+		log("Rota exibida...");
+
+		ina = false;
+
+		return;
+
+	}
+
+	var l = 1;
+
+	if(pontos[i][3]+l>pontos[i][2]){
+
+		l = pontos[i][2]-pontos[i][3];
+
+	}
+
+	renan+=l;
+
+	if(renan>ls){
+		l-=(renan-ls);
+		renan=ls;
+	}
+
+	pontos[i][3]+=l;
+
+	var dx = pontos[i][1]*l;
+
+	var dy = pontos[i][0]*l;
+
+
+	
+
+	ofl+=dx;
+	oft+=dy;
+
+	
+
+	if(pontos[i][3] == pontos[i][2]){
+
+		i++;
+
+	}
+
+
+	}
+
+
+	robo.style.left = ofl+"px";
+	robo.style.top = oft+"px";
+
+	setTimeout(function(){
+
+		animar(pontos,oft,ofl,i);
+
+	},15);
+
+}
+
+</script>
+
+</body>
+
+</html>
